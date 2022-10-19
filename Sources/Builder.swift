@@ -5,6 +5,12 @@ public protocol Builder {
     func build(using dependencies: Dependencies) -> Product
 }
 
+extension Builder where Dependencies == Void {
+    public func build() -> Product {
+        build(using: ())
+    }
+}
+
 extension Builder {
     public func scoped<Args>(_ dependenciesResolver: @escaping (Args) -> Dependencies) -> ScopedBuilder<Args, Product> {
         let productResolver = { args in
