@@ -4,9 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "Builder",
-    platforms: [
-        .iOS(.v16)
-    ],
+    platforms: [.iOS(.v16)],
     products: [
         .library(name: "Builder", targets: ["Builder"])
     ],
