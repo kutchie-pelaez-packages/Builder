@@ -23,17 +23,3 @@ extension Builder {
         return ScopedBuilder(productResolver: productResolver)
     }
 }
-
-private struct ScopedBuilder<Dependencies, Product>: Builder {
-    private let productResolver: (Dependencies) -> Product
-
-    fileprivate init(productResolver: @escaping (Dependencies) -> Product) {
-        self.productResolver = productResolver
-    }
-
-    // MARK: Builder
-
-    fileprivate func build(using dependencies: Dependencies) -> Product {
-        productResolver(dependencies)
-    }
-}
