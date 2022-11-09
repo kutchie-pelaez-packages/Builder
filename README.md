@@ -67,10 +67,10 @@ In order to resolve other dependencies from `FooDeps` externally (apart from `st
 we can inject scoped builder into `BarViewController` as follows:
 
 ```swift
-struct FooDepsImpl: FooDeps {
+struct FooDepsImpl<N: Networking, A: Analytics>: FooDeps {
     let stringArg: String
-    let networking: Networking
-    let analytics: Analytics
+    let networking: N
+    let analytics: A
 }
 
 ...
