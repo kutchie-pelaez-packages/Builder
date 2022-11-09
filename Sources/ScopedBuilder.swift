@@ -1,13 +1,13 @@
-struct ScopedBuilder<Dependencies, Product>: Builder {
-    private let productResolver: (Dependencies) -> Product
+struct ScopedBuilder<Deps, Product>: Builder {
+    private let productResolver: (Deps) -> Product
 
-    init(productResolver: @escaping (Dependencies) -> Product) {
+    init(productResolver: @escaping (Deps) -> Product) {
         self.productResolver = productResolver
     }
 
     // MARK: Builder
 
-    func build(using dependencies: Dependencies) -> Product {
-        productResolver(dependencies)
+    func build(using deps: Deps) -> Product {
+        productResolver(deps)
     }
 }

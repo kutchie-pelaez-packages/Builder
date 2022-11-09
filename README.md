@@ -11,7 +11,7 @@ These declarations can be made in defferent submodules in order to make further 
 builder independet of implementation details.
 
 ```swift
-public protocol FooDependencies {
+public protocol FooDeps {
     associatedtype NetworkingType: Networking
     associatedtype AnaliticsType: Analitics
 
@@ -30,14 +30,14 @@ public struct FooArgs {
 ```
 
 ```swift
-public struct FooBuilder<Dependencies: FooDependencies>: Builder {
+public struct FooBuilder<Deps: FooDeps>: Builder {
     public init() {}
 
-    public func build(using dependencies: Dependencies) -> UIViewController {
+    public func build(using deps: Deps) -> UIViewController {
         FooViewController(
-            stringArg: dependencies.stringArg,
-            networking: dependencies.networking,
-            analytics: dependencies.analytics
+            stringArg: deps.stringArg,
+            networking: deps.networking,
+            analytics: deps.analytics
         )
     }
 }
@@ -61,11 +61,11 @@ final class BarViewController<FB: Builder<FooArgs, UIViewController>>: UIViewCon
 }
 ```
 
-In order to resolve other dependencies from `FooDependencies` externally (apart from `stringArg`)  
+In order to resolve other dependencies from `FooDeps` externally (apart from `stringArg`)  
 we can inject scoped builder into `BarViewController` as follows:
 
 ```swift
-struct FooDependenciesImpl: FooDependencies {
+struct FooDepsImpl: FooDeps {
     let stringArg: String
     let networking: Networking
     let analytics: Analytics
@@ -76,7 +76,7 @@ struct FooDependenciesImpl: FooDependencies {
 let networking = NetworkingImpl()
 let analytics = AnalyticsImpl()
 let scopedFooBuilder: some Builder<FooArgs, UIViewController> = FooBuilder().scoped { args in
-    FooDependenciesImpl(
+    FooDepsImpl(
         stringArg: args.stringArg,
         networking: networking,
         analytics: analytics

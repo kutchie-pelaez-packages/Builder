@@ -1,21 +1,21 @@
-public protocol Builder<Dependencies, Product> {
-    associatedtype Dependencies
+public protocol Builder<Deps, Product> {
+    associatedtype Deps
     associatedtype Product
 
-    func build(using dependencies: Dependencies) -> Product
+    func build(using deps: Deps) -> Product
 }
 
-extension Builder where Dependencies == Void {
+extension Builder where Deps == Void {
     public func build() -> Product {
         build(using: ())
     }
 }
 
 extension Builder {
-    public func scoped<Args>(_ dependenciesResolver: @escaping (Args) -> Dependencies) -> some Builder<Args, Product> {
+    public func scoped<Args>(_ depsResolver: @escaping (Args) -> Deps) -> some Builder<Args, Product> {
         let productResolver = { args in
-            let dependencies = dependenciesResolver(args)
-            let product = build(using: dependencies)
+            let deps = depsResolver(args)
+            let product = build(using: deps)
 
             return product
         }
