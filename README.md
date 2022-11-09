@@ -56,9 +56,11 @@ final class BarViewController<FB: Builder<FooArgs, UIViewController>>: UIViewCon
         super.init(nibName: nil, bundle: nil)
     }
 
-    func buildFooProduct() -> UIViewController {
-        let args = FooArgs(stringArg: "stringArg")
-        fooBuilder.build(using: args)
+    func buildFooProduct(for stringArg: String) -> UIViewController {
+        let args = FooArgs(stringArg: stringArg)
+        let product = fooBuilder.build(using: args)
+        
+        return product
     }
 }
 ```
