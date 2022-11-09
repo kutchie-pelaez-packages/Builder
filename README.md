@@ -19,7 +19,9 @@ public protocol FooDeps {
     var networking: NetworkingType { get }
     var analytics: AnaliticsType { get }
 }
+```
 
+```swift
 public struct FooArgs {
     public let stringArg: String
 
