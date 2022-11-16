@@ -1,90 +1,145 @@
 # Builder
 
-Tiny layer of abstraction for building logic injection.
+Tiny layer of abstraction for building logic.
 
 ## Usage
 
-Here's common builder injection scenario. `UIViewController`s are used only for demonstration sake.
+Here's common builder injection scenario. `UIViewController`s are used only for demonstration  
+sake, it can be any app module (router, coordinaror, etc.) or type in general.
 
-Some module `Foo` declares public builder and dependencies (with arguments if needed).  
-These declarations can be made in defferent submodules in order to make further usage of  
-builder independet of implementation details.
+Assume there are two screens in the app - `Home` and `Profile`. On each screen there is an option  
+to present `Paywall` screen which depends on `PurchasesService` and `AnalyticsTracker` services and  
+`PawallSource` argument.
 
 ```swift
-public protocol FooDeps {
-    associatedtype NetworkingType: Networking
-    associatedtype AnaliticsType: Analitics
-
-    var stringArg: String { get }
-    var networking: NetworkingType { get }
-    var analytics: AnaliticsType { get }
+public enum PaywallSource {
+    case home
+    case profile
 }
 ```
 
-```swift
-public struct FooArgs {
-    public let stringArg: String
+There are all dependencies for `Paywall` sceen:
 
-    public init(stringArg: String) {
-        self.stringArg = stringArg
-    }
+```swift
+public protocol PaywallDeps {
+    associatedtype PurchasesServiceType: PurchasesService
+    associatedtype AnalyticsTrackerType: AnalyticsTracker
+
+    var source: PawallSource { get }
+    var purchasesService: PurchasesServiceType { get }
+    var analyticsTracker: AnalyticsTrackerType { get }
 }
 ```
 
+And this is how `PaywallBuilder` can be implemented, it takes `Deps` constrainted to `PaywallDeps` and returns  
+abstract `UIViewController` hiding all implementstion details about `PaywallInteractor` and `PaywallViewController`.
+
 ```swift
-public struct FooBuilder<Deps: FooDeps>: Builder {
+public struct PaywallBuilder<Deps: PaywallDeps>: Builder {
     public init() {}
 
     public func build(using deps: Deps) -> UIViewController {
-        FooViewController(
-            stringArg: deps.stringArg,
-            networking: deps.networking,
-            analytics: deps.analytics
+        let interactor = PaywallInteractor(
+            purchasesService: deps.purchasesService,
+            analyticsTracker: deps.analyticsTracker
         )
+        let viewController = PaywallViewController(
+            source: deps.source,
+            interactor: interactor
+        )
+        interactor.viewController = viewController
+
+        return viewController
     }
 }
 ```
 
-In some module `Bar` we want to build `FooBuilder`'s product using `FooArgs`:
+In dependencies for `Home` and `Profile` screens we can now add `PaywallBuilder`, but  
+with dependencies declared as `PaywallSource` instead of `PaywallDeps`, because `Home` and `Profile`  
+do not have to depend on services from `PaywallDeps` (`PurchasesService` for instance).
 
 ```swift
-final class BarViewController<FB: Builder<FooArgs, UIViewController>>: UIViewController {
-    private let fooBuilder: FB
+public protocol HomeDeps {
+    associatedtype PawallBuilderType: Builder<PaywallSource, UIViewController>
 
-    init(fooBuilder: FB) {
-        self.fooBuilder = fooBuilder
-        super.init(nibName: nil, bundle: nil)
-    }
+    var paywallBuilder: PawallBuilderType { get }
+    ...
+}
+```
 
-    func buildFooProduct(for stringArg: String) -> UIViewController {
-        let args = FooArgs(stringArg: stringArg)
-        let product = fooBuilder.build(using: args)
-        
-        return product
+```swift
+public protocol ProfileDeps {
+    associatedtype PawallBuilderType: Builder<PaywallSource, UIViewController>
+
+    var paywallBuilder: PawallBuilderType { get }
+    ...
+}
+```
+
+In order to resolve these dependencies somewhere externally (`AppDelegate` for exmample) we can declare `...DepsImpl`  
+for each dependencies and pass `AppDelegate` as parent with all services/bulders initialization made inside `AppDelegate`.
+
+```swift
+struct PaywallDepsImpl {
+    let parent: AppDelegate
+    let source: PawallSource
+
+    var purchasesService: some PurchasesService { parent.purchasesService }
+    var analyticsTracker: some AnalyticsTracker { parent.analyticsTracker }
+}
+```
+
+```swift
+final class AppDelegate: UIApplicationDelegate {
+    lazy var purchasesService: some PurchasesService = {
+        PurchasesServiceImpl()
+    }()
+
+    lazy var analyticsTracker: some AnalyticsTracker = {
+        AnalyticsTrackerImpl()
+    }()
+
+    lazy var paywallBuilder: some Builder<PaywallSource, UIViewController> = { 
+        PaywallBuilder().scoped { source in
+            PaywallDepsImpl(parent: self, source: source)
+        }
     }
 }
 ```
 
-In order to resolve other dependencies from `FooDeps` externally (apart from `stringArg`)  
-we can inject scoped builder into `BarViewController` as follows:
+```swift
+struct HomeDepsImpl {
+    let parent: AppDelegate
+
+    var paywallBuilder: some Builder<PaywallSource, UIViewController> { parent.paywallBuilder }
+    ...
+}
+```
 
 ```swift
-struct FooDepsImpl<N: Networking, A: Analytics>: FooDeps {
-    let stringArg: String
-    let networking: N
-    let analytics: A
-}
+struct ProfileDepsImpl {
+    let parent: AppDelegate
 
-...
-
-let networking = NetworkingImpl()
-let analytics = AnalyticsImpl()
-let scopedFooBuilder: some Builder<FooArgs, UIViewController> = FooBuilder().scoped { args in
-    FooDepsImpl(
-        stringArg: args.stringArg,
-        networking: networking,
-        analytics: analytics
-    )
+    var paywallBuilder: some Builder<PaywallSource, UIViewController> { parent.paywallBuilder }
+    ...
 }
-let barViewController = BarViewController(fooBuilder: scopedFooBuilder)
+```
+
+Using `Builder` helped to hide implementation details and expose barely minimum interface for client (`Home` and `Profile` in  
+this example). That's how `Paywall` sceen can be built inside `Home` screen:
+
+```swift
+final class HomeViewController<PB: Builder<PaywallSource, UIViewController>>: UIViewController {
+    let paywallBuilder: PB
+
+    init(paywallBuilder: PB) {
+        self.paywallBuilder = paywallBuilder
+        super.init(nibName: nil, bundle: NIL)
+    }
+
+    func presentPaywall() {
+        let paywallViewController = paywallBuilder.build(using: .home)
+        present(paywallViewController, animated: true)
+    }
+}
 ```
